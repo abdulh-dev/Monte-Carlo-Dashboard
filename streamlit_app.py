@@ -75,7 +75,7 @@ if stock_ticker:
         # Perform Monte Carlo simulation
         paths = geo_paths(S0, T, r, 0, sigma, steps, N)
 
-        # Plot the simulation
+        # Plot the simulation paths
         st.subheader('Monte Carlo Simulation Results')
         fig, ax = plt.subplots()
         ax.plot(paths)
@@ -87,6 +87,36 @@ if stock_ticker:
         # Displaying some statistics
         st.write(f"Simulated final stock price mean: {paths[-1].mean():.2f}")
         st.write(f"Simulated final stock price standard deviation: {paths[-1].std():.2f}")
+
+        # -------------------------------------------------------------------
+        # Histogram of Final Stock Prices
+        st.subheader('Distribution of Final Stock Prices')
+        fig, ax = plt.subplots()
+        ax.hist(paths[-1], bins=30, alpha=0.75, color='blue')
+        ax.set_xlabel("Final Stock Prices")
+        ax.set_ylabel("Frequency")
+        ax.set_title(f"Histogram of Final Stock Prices for {stock_ticker}")
+        st.pyplot(fig)
+
+        # -------------------------------------------------------------------
+        # Convergence Plot for Monte Carlo Simulation
+        cumulative_averages = []
+        total = 0
+
+        # Calculate cumulative averages over each simulation
+        for i in range(1, N + 1):
+            total += paths[-1, i-1]  # Sum of the final stock prices
+            cumulative_averages.append(total / i)  # Cumulative average
+
+        # Plot the convergence chart
+        st.subheader('Convergence of Monte Carlo Simulations')
+        fig, ax = plt.subplots()
+        ax.plot(range(1, N + 1), cumulative_averages, label='Convergence of Estimate')
+        ax.set_xlabel("Number of Simulations")
+        ax.set_ylabel("Cumulative Average of Final Stock Prices")
+        ax.set_title(f"Convergence Chart for {stock_ticker}")
+        ax.legend()
+        st.pyplot(fig)
 
     else:
         st.warning("No data available for the entered stock ticker.")
