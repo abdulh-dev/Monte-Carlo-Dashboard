@@ -1,66 +1,94 @@
-import altair as alt
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import datetime as dt
+import yfinance as yf
 
-# Show the page title and description.
-st.set_page_config(page_title="Movies dataset", page_icon="🎬")
-st.title("🎬 Movies dataset")
-st.write(
-    """
-    This app visualizes data from [The Movie Database (TMDB)](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata).
-    It shows which movie genre performed best at the box office over the years. Just 
-    click on the widgets below to explore!
-    """
+# Set the title and favicon that appear in the browser's tab bar.
+st.set_page_config(
+    page_title='Monte Carlo Stock Price Simulation',
+    page_icon=':chart_with_upwards_trend:',  # Stock chart emoji.
 )
 
+# -------------------------------------------------------------------
+# Declare some useful functions.
 
-# Load the data from a CSV. We're caching this so it doesn't reload every time the app
-# reruns (e.g. if the user interacts with the widgets).
+def geo_paths(S, T, r, q, sigma, steps, N):
+    """Generates paths for a geometric Brownian motion."""
+    dt = T / steps
+    ST = np.log(S) + np.cumsum(((r - q - sigma**2 / 2) * dt + 
+                                 sigma * np.sqrt(dt) * 
+                                 np.random.normal(size=(steps, N))), axis=0)
+    return np.exp(ST)
+
 @st.cache_data
-def load_data():
-    df = pd.read_csv("data/movies_genres_summary.csv")
-    return df
+def get_stock_data(ticker, start, end):
+    """Fetch stock data using yfinance."""
+    try:
+        stock_data = yf.download(ticker, start=start, end=end)
+        return stock_data['Close']
+    except Exception as e:
+        st.error(f"Error fetching data for {ticker}: {e}")
+        return None
 
+# -------------------------------------------------------------------
+# Page content and user interaction
 
-df = load_data()
+# Set the title that appears at the top of the page.
+st.title(":chart_with_upwards_trend: Monte Carlo Stock Price Simulation")
 
-# Show a multiselect widget with the genres using `st.multiselect`.
-genres = st.multiselect(
-    "Genres",
-    df.genre.unique(),
-    ["Action", "Adventure", "Biography", "Comedy", "Drama", "Horror"],
-)
+st.write("""
+Simulate future stock prices using the Monte Carlo method. Select a stock, and adjust parameters like the risk-free rate, volatility, and time horizon.
+""")
 
-# Show a slider widget with the years using `st.slider`.
-years = st.slider("Years", 1986, 2006, (2000, 2016))
+# Sidebar input section for parameters
+st.sidebar.header("Monte Carlo Simulation Parameters")
 
-# Filter the dataframe based on the widget input and reshape it.
-df_filtered = df[(df["genre"].isin(genres)) & (df["year"].between(years[0], years[1]))]
-df_reshaped = df_filtered.pivot_table(
-    index="year", columns="genre", values="gross", aggfunc="sum", fill_value=0
-)
-df_reshaped = df_reshaped.sort_values(by="year", ascending=False)
+stock_ticker = st.sidebar.text_input('Enter stock ticker (e.g., AAPL, TSLA, MSFT):', 'AAPL')
 
+# Date range input for historical data fetching
+end_date = dt.datetime.now()
+start_date = end_date - dt.timedelta(days=300)
 
-# Display the data as a table using `st.dataframe`.
-st.dataframe(
-    df_reshaped,
-    use_container_width=True,
-    column_config={"year": st.column_config.TextColumn("Year")},
-)
+# Fetch stock data
+if stock_ticker:
+    stock_data = get_stock_data(stock_ticker, start=start_date, end=end_date)
+    if stock_data is not None and not stock_data.empty:
+        st.write(f"Displaying closing prices for {stock_ticker}:")
+        st.line_chart(stock_data)
 
-# Display the data as an Altair chart using `st.altair_chart`.
-df_chart = pd.melt(
-    df_reshaped.reset_index(), id_vars="year", var_name="genre", value_name="gross"
-)
-chart = (
-    alt.Chart(df_chart)
-    .mark_line()
-    .encode(
-        x=alt.X("year:N", title="Year"),
-        y=alt.Y("gross:Q", title="Gross earnings ($)"),
-        color="genre:N",
-    )
-    .properties(height=320)
-)
-st.altair_chart(chart, use_container_width=True)
+        # Automatically set S0 (Initial Stock Price) to the most recent stock price
+        S0 = stock_data.iloc[-1]  # Using iloc to get the last row
+        st.sidebar.write(f"Latest Stock Price (S_0): {S0:.2f}")
+
+        # Sidebar sliders for other parameters
+        K = st.sidebar.slider('Strike Price (K)', min_value=50, max_value=500, value=int(S0 * 1.1))
+        r = st.sidebar.slider('Risk-Free Rate (r)', min_value=0.0, max_value=0.1, value=0.05, step=0.01)
+        sigma = st.sidebar.slider('Volatility (σ)', min_value=0.1, max_value=1.0, value=0.2, step=0.01)
+        T = st.sidebar.slider('Time to Maturity (T)', min_value=0.1, max_value=5.0, value=1.0, step=0.1)
+        N = st.sidebar.slider('Number of Simulations (N)', min_value=10, max_value=1000, value=100)
+
+        # Time steps fixed at 100 for now
+        steps = 100
+
+        # Perform Monte Carlo simulation
+        paths = geo_paths(S0, T, r, 0, sigma, steps, N)
+
+        # Plot the simulation
+        st.subheader('Monte Carlo Simulation Results')
+        fig, ax = plt.subplots()
+        ax.plot(paths)
+        ax.set_xlabel("Time Steps")
+        ax.set_ylabel("Stock Price")
+        ax.set_title(f"Simulated Stock Price Paths for {stock_ticker}")
+        st.pyplot(fig)
+
+        # Displaying some statistics
+        st.write(f"Simulated final stock price mean: {paths[-1].mean():.2f}")
+        st.write(f"Simulated final stock price standard deviation: {paths[-1].std():.2f}")
+
+    else:
+        st.warning("No data available for the entered stock ticker.")
+else:
+    st.warning("Please enter a valid stock ticker.")
