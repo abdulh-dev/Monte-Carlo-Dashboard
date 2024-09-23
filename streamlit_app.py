@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import datetime as dt
 import yfinance as yf
+from scipy.stats import norm
 
 # Set the title and favicon that appear in the browser's tab bar.
 st.set_page_config(
@@ -22,6 +23,13 @@ def geo_paths(S, T, r, q, sigma, steps, N):
                                  np.random.normal(size=(steps, N))), axis=0)
     return np.exp(ST)
 
+def black_scholes(S, K, r, T, sigma):
+    """Calculate European Call Option Price using Black-Scholes formula."""
+    d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+    call_price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+    return call_price
+
 @st.cache_data
 def get_stock_data(ticker, start, end):
     """Fetch stock data using yfinance."""
@@ -39,7 +47,7 @@ def get_stock_data(ticker, start, end):
 st.title(":chart_with_upwards_trend: Monte Carlo Stock Price Simulation")
 
 st.write("""
-Simulate future stock prices using the Monte Carlo method. Select a stock, and adjust parameters like the risk-free rate, volatility, and time horizon.
+Simulate future stock prices using the Monte Carlo method and compare with the Black-Scholes model. Select a stock, and adjust parameters like the risk-free rate, volatility, and time horizon.
 """)
 
 # Sidebar input section for parameters
@@ -88,14 +96,24 @@ if stock_ticker:
         st.write(f"Simulated final stock price mean: {paths[-1].mean():.2f}")
         st.write(f"Simulated final stock price standard deviation: {paths[-1].std():.2f}")
 
+
         # -------------------------------------------------------------------
-        # Histogram of Final Stock Prices
-        st.subheader('Distribution of Final Stock Prices')
+        # Volatility Heatmap for Call Prices
+        st.subheader('Volatility Heatmap for Call Option Prices')
+        K_values = np.linspace(50, 500, 50)  # Strike prices
+        sigma_values = np.linspace(0.1, 1.0, 50)  # Volatilities
+        call_prices = np.zeros((len(K_values), len(sigma_values)))
+
+        for i, K_val in enumerate(K_values):
+            for j, sigma_val in enumerate(sigma_values):
+                call_prices[i, j] = black_scholes(S0, K_val, r, T, sigma_val)
+
         fig, ax = plt.subplots()
-        ax.hist(paths[-1], bins=30, alpha=0.75, color='blue')
-        ax.set_xlabel("Final Stock Prices")
-        ax.set_ylabel("Frequency")
-        ax.set_title(f"Histogram of Final Stock Prices for {stock_ticker}")
+        c = ax.imshow(call_prices, aspect='auto', cmap='coolwarm', extent=[sigma_values.min(), sigma_values.max(), K_values.min(), K_values.max()])
+        ax.set_xlabel('Volatility (σ)')
+        ax.set_ylabel('Strike Price (K)')
+        ax.set_title(f"Call Option Prices for {stock_ticker}")
+        fig.colorbar(c, ax=ax)
         st.pyplot(fig)
 
         # -------------------------------------------------------------------
