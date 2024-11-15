@@ -72,7 +72,7 @@ if stock_ticker:
         st.line_chart(stock_data)
 
         # Automatically set S0 (Initial Stock Price) to the most recent stock price
-        S0 = stock_data.iloc[-1] if not stock_data.empty else None
+        S0 = stock_data.iloc[-1].item() if not stock_data.empty else None
         if S0 is not None:
             st.sidebar.write(f"Latest Stock Price (S_0): {S0:.2f}")
 
