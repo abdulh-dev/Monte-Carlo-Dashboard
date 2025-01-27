@@ -1,19 +1,32 @@
-# 🎬 Movies dataset template
+# Monte Carlo Stock Price Simulation 📈  
 
-A simple Streamlit app showing movie data from [The Movie Database (TMDB)](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata). 
+This project is a **Streamlit application** that uses the Monte Carlo method to simulate future stock prices and compares the results to the Black-Scholes option pricing model. It provides interactive visualizations and insights into stock price behaviors and option pricing.  
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://movies-dataset-template.streamlit.app/)
+## Features  
+- 📊 **Fetch Historical Stock Data**:  
+  Use `yfinance` to retrieve closing prices of stocks over a selected date range.  
 
-### How to run it on your own machine
+- 🎲 **Monte Carlo Simulation**:  
+  Simulate future stock prices using Geometric Brownian Motion and visualize multiple simulated paths.  
 
-1. Install the requirements
+- 🧮 **Black-Scholes Option Pricing**:  
+  Calculate European call option prices and visualize their dependence on volatility and strike prices using a heatmap.  
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+- 📉 **Convergence Analysis**:  
+  Track the convergence of simulated stock prices' cumulative average as the number of simulations increases.  
 
-2. Run the app
+- 🛠️ **Interactive UI**:  
+  - Adjust key parameters (e.g., volatility, risk-free rate, strike price) with easy-to-use sliders.  
+  - Automatically fetch the latest stock price for a given ticker.  
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+## Technologies Used  
+- **Python**  
+- **Streamlit** for building the interactive user interface.  
+- **yfinance** for fetching stock price data.  
+- **NumPy** for numerical computations.  
+- **Matplotlib** for plotting visualizations.  
+- **SciPy** for statistical functions like cumulative distribution functions (CDFs).  
+
+
+Access App using this link:
+https://monte-carlo-options.streamlit.app
